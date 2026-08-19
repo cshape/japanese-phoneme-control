@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# secrets / local config
+.env
+.env.local
+.env.*.local
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# build output / coverage
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# runtime / cache
+.npm
+.node_repl_history
+*.pid
+*.seed
+*.pid.lock
+.cache/
+
+# generated audio
+*.mp3
+*.wav
+
+# editor / tooling
+.claude/
+.vscode/
+.idea/
+*.swp
+
+# os
+.DS_Store
+Thumbs.db

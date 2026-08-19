@@ -1,0 +1,17 @@
+{
+  "name": "japanese-phoneme-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Japanese pronunciation dictionary -> OpenJTalk phoneme tags -> Fish Audio TTS",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "demo": "node demo.js"
+  },
+  "dependencies": {
+    "kuromoji": "^0.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

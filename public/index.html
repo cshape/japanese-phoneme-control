@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Japanese pronunciation dictionary — Fish Audio TTS</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --panel: #fff; --ink: #1c1c1a; --dim: #6b6b66; --line: #e4e3df;
+    --accent: #b4552d; --accent-soft: #fdf1eb; --ok: #2f7d55; --warn: #9a6b00;
+    --code-bg: #f4f3f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a; --panel: #1f1f23; --ink: #e9e8e4; --dim: #9a9993; --line: #313136;
+      --accent: #e08a5f; --accent-soft: #2b211c; --ok: #6cc08c; --warn: #d6a63c;
+      --code-bg: #26262b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, "Hiragino Sans", "Noto Sans JP", "Meiryo", sans-serif;
+  }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header { padding: 22px 28px 14px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 4px; font-size: 19px; font-weight: 640; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--dim); font-size: 13.5px; }
+  main { display: grid; grid-template-columns: minmax(340px, 400px) 1fr; gap: 0; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .col { padding: 20px 28px 60px; }
+  .col.left { border-right: 1px solid var(--line); }
+  @media (max-width: 900px) { .col.left { border-right: 0; border-bottom: 1px solid var(--line); } }
+
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--dim);
+       margin: 26px 0 10px; font-weight: 620; }
+  h2:first-child { margin-top: 0; }
+
+  textarea, input, select {
+    font: inherit; color: inherit; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%;
+  }
+  textarea { min-height: 84px; resize: vertical; line-height: 1.6; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+  button {
+    font: inherit; font-weight: 560; cursor: pointer; border-radius: 7px; padding: 8px 14px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; border-color: var(--accent); }
+  button.tiny { padding: 3px 8px; font-size: 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .samples { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .samples button { text-align: left; font-size: 13px; padding: 6px 10px; font-weight: 450; }
+
+  table.dict { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.dict th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+                  color: var(--dim); font-weight: 600; padding: 0 6px 6px 0; }
+  table.dict td { padding: 2px 6px 2px 0; vertical-align: middle; }
+  table.dict input { padding: 5px 7px; border-radius: 5px; }
+  table.dict input[type=number] { width: 58px; }
+  .del { color: var(--dim); background: none; border: none; padding: 2px 6px; font-size: 15px; }
+  .del:hover { color: var(--accent); }
+
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+          padding: 16px 18px; margin-bottom: 14px; }
+  .step-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .step-num { font-size: 11px; font-weight: 700; color: #fff; background: var(--accent);
+              border-radius: 4px; padding: 2px 6px; letter-spacing: .04em; }
+  .step-title { font-weight: 600; font-size: 14px; }
+  .step-sub { color: var(--dim); font-size: 12.5px; margin-left: auto; }
+
+  .tokens { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tok { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; background: var(--bg);
+         text-align: center; min-width: 34px; }
+  .tok .s { font-size: 15px; }
+  .tok .r { font-size: 10.5px; color: var(--dim); margin-top: 1px; }
+  .tok.hit { border-color: var(--accent); background: var(--accent-soft); }
+  .tok.particle { border-style: dashed; border-color: var(--accent); }
+
+  .rep { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .rep + .rep { margin-top: 0; }
+  .rep-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .rep-word { font-size: 17px; font-weight: 600; }
+  .rep-meta { color: var(--dim); font-size: 12.5px; }
+  .rep-note { color: var(--dim); font-size: 12.5px; margin-top: 6px; }
+  .badge { font-size: 10.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase;
+           padding: 2px 6px; border-radius: 4px; }
+  .badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  .badge.gray { color: var(--dim); background: var(--code-bg); }
+
+  .morae { display: flex; gap: 3px; margin: 10px 0 8px; align-items: flex-end; }
+  .mora { text-align: center; font-size: 12px; padding: 3px 7px; border-radius: 5px;
+          background: var(--code-bg); font-family: ui-monospace, Menlo, monospace; }
+  .mora.h { border-top: 3px solid var(--accent); transform: translateY(-5px); }
+  .mora.l { border-bottom: 3px solid var(--dim); opacity: .8; }
+  .mora.flat { border-bottom: 3px solid transparent; }
+
+  pre.out { background: var(--code-bg); border-radius: 7px; padding: 12px 14px; margin: 0;
+            white-space: pre-wrap; word-break: break-all; font-size: 12.5px; line-height: 1.7; }
+  .tagpart { color: var(--accent); font-weight: 600; }
+  .muted { color: var(--dim); }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tabs button { border-radius: 999px; font-size: 13px; padding: 5px 14px; }
+  .tabs button[aria-selected=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .stream-line { display: flex; gap: 10px; align-items: baseline; padding: 5px 0;
+                 border-bottom: 1px dotted var(--line); font-size: 13.5px; }
+  .stream-line:last-child { border-bottom: 0; }
+  .pending { background: var(--accent-soft); border: 1px dashed var(--accent); border-radius: 6px;
+             padding: 8px 10px; min-height: 38px; font-size: 15px; }
+  .err { color: var(--accent); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Japanese pronunciation dictionary → Fish Audio TTS</h1>
+  <p>Client-side dictionary expanded into <code>&lt;|phoneme_start|&gt;</code> tags. Matching happens on kuromoji token boundaries, so an entry can never fire inside a longer word.</p>
+</header>
+
+<main>
+  <section class="col left">
+    <h2>Text</h2>
+    <textarea id="text">雨の日に橋の上で箸を落としました。</textarea>
+    <div class="samples" id="samples"></div>
+
+    <h2>Dictionary</h2>
+    <table class="dict">
+      <thead><tr><th>表層形</th><th>読み</th><th>アクセント型</th><th></th></tr></thead>
+      <tbody id="dict"></tbody>
+    </table>
+    <div class="row" style="margin-top:10px">
+      <button class="tiny" id="add">+ add entry</button>
+      <button class="tiny" id="reset">reset</button>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:10px">
+      Key on the word alone — the following particle is attached automatically,
+      using kuromoji's phonetic reading of it (topic-marker は → ワ).
+      アクセント型 counts <em>morae</em>: キョ, ー, ン, ッ are one each.
+    </p>
+  </section>
+
+  <section class="col">
+    <div class="tabs">
+      <button id="tab-batch" aria-selected="true">Batch</button>
+      <button id="tab-stream" aria-selected="false">Streaming from an LLM</button>
+    </div>
+
+    <div id="view-batch">
+      <div class="step">
+        <div class="step-head"><span class="step-num">1</span><span class="step-title">Tokenize</span>
+          <span class="step-sub" id="tok-sub"></span></div>
+        <div class="tokens" id="tokens"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">2</span><span class="step-title">Replace</span>
+          <span class="step-sub" id="rep-sub"></span></div>
+        <div id="reps"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">3</span><span class="step-title">Text sent to TTS</span></div>
+        <pre class="out" id="output"></pre>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">4</span><span class="step-title">Synthesize</span>
+          <span class="step-sub" id="tts-sub"></span></div>
+        <pre class="out" id="reqbody"></pre>
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="speak">▶ Synthesize &amp; play</button>
+          <audio id="audio" controls style="flex:1;min-width:220px;height:34px"></audio>
+        </div>
+        <div class="err" id="tts-err"></div>
+      </div>
+    </div>
+
+    <div id="view-stream" hidden>
+      <div class="step">
+        <div class="step-head"><span class="step-num">1</span><span class="step-title">LLM deltas → carry buffer</span>
+          <span class="step-sub">held back until safe to release</span></div>
+        <div class="row" style="margin-bottom:12px">
+          <button class="primary" id="run-stream">▶ Run stream</button>
+        </div>
+        <p class="muted" style="font-size:12.5px;margin:0 0 6px">Buffer (waiting for a boundary)</p>
+        <div class="pending" id="pending"></div>
+      </div>
+      <div class="step">
+        <div class="step-head"><span class="step-num">2</span><span class="step-title">Released segments</span>
+          <span class="step-sub">each one is a TextEvent on the TTS websocket</span></div>
+        <div id="releases"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let DICT = {}, DEFAULTS = {}, hasFishKey = false;
+
+// --- dictionary editor -------------------------------------------------------
+function renderDict() {
+  const tb = $('dict');
+  tb.innerHTML = '';
+  for (const [surface, e] of Object.entries(DICT)) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input value="${surface}" data-f="surface"></td>
+      <td><input value="${e.yomi}" data-f="yomi"></td>
+      <td><input type="number" min="0" value="${e.accent}" data-f="accent"></td>
+      <td><button class="del" title="remove">×</button></td>`;
+    tr.querySelectorAll('input').forEach((inp) => inp.addEventListener('change', () => {
+      const [s, y, a] = [...tr.querySelectorAll('input')].map((i) => i.value);
+      const next = {};
+      for (const [k, v] of Object.entries(DICT)) {
+        if (k === surface) next[s || k] = { ...v, yomi: y, accent: Number(a) };
+        else next[k] = v;
+      }
+      DICT = next; renderDict(); run();
+    }));
+    tr.querySelector('.del').addEventListener('click', () => {
+      delete DICT[surface]; renderDict(); run();
+    });
+    tb.appendChild(tr);
+  }
+}
+
+$('add').addEventListener('click', () => {
+  DICT[''] = { yomi: '', accent: 0, verified: false, note: 'new entry' };
+  renderDict();
+});
+$('reset').addEventListener('click', () => { DICT = structuredClone(DEFAULTS); renderDict(); run(); });
+
+// --- pitch diagram -----------------------------------------------------------
+function moraChips(morae, phonemes) {
+  // zip the mora list against the digits in the phoneme string
+  let i = 0, out = [];
+  for (const m of morae) {
+    i += m.length;
+    const d = phonemes[i] === '0' || phonemes[i] === '1' ? phonemes[i] : null;
+    if (d !== null) i += 1;
+    out.push(`<span class="mora ${d === '1' ? 'h' : d === '0' ? 'l' : 'flat'}">${m}</span>`);
+  }
+  return `<div class="morae">${out.join('')}</div>`;
+}
+
+// --- batch view --------------------------------------------------------------
+async function run() {
+  const text = $('text').value;
+  const res = await fetch('/api/analyze', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text, dictionary: DICT }),
+  }).then((r) => r.json());
+
+  const hitSurfaces = new Set(res.segments.filter((s) => s.kind === 'tag').flatMap(
+    (s) => [s.word, s.particle].filter(Boolean)));
+
+  $('tok-sub').textContent = `${res.tokens.length} tokens · kuromoji / IPADIC`;
+  $('tokens').innerHTML = res.tokens.map((t) => {
+    const cls = hitSurfaces.has(t.surface) ? (t.pos === '助詞' ? 'tok hit particle' : 'tok hit') : 'tok';
+    return `<div class="${cls}"><div class="s">${t.surface}</div><div class="r">${t.pronunciation ?? ''}</div></div>`;
+  }).join('');
+
+  const taps = res.segments.filter((s) => s.kind === 'tag');
+  $('rep-sub').textContent = taps.length ? `${taps.length} replaced` : 'no dictionary hits';
+  $('reps').innerHTML = taps.length ? taps.map((s) => `
+    <div class="rep">
+      <div class="rep-top">
+        <span class="rep-word">${s.word}${s.particle ? `<span class="muted">${s.particle}</span>` : ''}</span>
+        <span class="rep-meta">${s.yomi}${s.particleYomi ? ` + ${s.particleYomi}` : ''} · アクセント型 ${s.accent}</span>
+        <span class="badge ${s.verified ? 'ok' : 'warn'}">${s.verified ? 'verified' : 'verify by ear'}</span>
+      </div>
+      ${moraChips(s.morae, s.phonemes)}
+      <code>${s.phonemes}</code> <span class="muted">· ${s.contour}</span>
+      ${s.note ? `<div class="rep-note">${s.note}</div>` : ''}
+    </div>`).join('') : '<p class="muted">Nothing in the dictionary matched a token in this text.</p>';
+
+  $('output').innerHTML = res.output.replace(
+    /<\|phoneme_start\|>(.*?)<\|phoneme_end\|>/g,
+    (_, p) => `<span class="tagpart">&lt;|phoneme_start|&gt;${p}&lt;|phoneme_end|&gt;</span>`);
+
+  $('reqbody').textContent = JSON.stringify({ text: res.output, format: 'mp3' }, null, 2);
+
+  if (res.errors?.length) $('tts-err').textContent = 'dictionary: ' + res.errors.join('; ');
+  else $('tts-err').textContent = '';
+  window.__out = res.output;
+}
+
+$('text').addEventListener('input', debounce(run, 250));
+
+// --- synthesize --------------------------------------------------------------
+$('speak').addEventListener('click', async () => {
+  const btn = $('speak'); btn.disabled = true; $('tts-err').textContent = '';
+  try {
+    const r = await fetch('/api/tts', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: window.__out }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    const audio = $('audio');
+    audio.src = URL.createObjectURL(await r.blob());
+    await audio.play();
+  } catch (e) {
+    $('tts-err').textContent = e.message;
+  } finally { btn.disabled = false; }
+});
+
+// --- streaming view ----------------------------------------------------------
+$('run-stream').addEventListener('click', () => {
+  $('releases').innerHTML = ''; $('pending').textContent = '';
+  const qs = new URLSearchParams({ text: $('text').value, dictionary: JSON.stringify(DICT) });
+  const es = new EventSource('/api/stream?' + qs);
+
+  es.addEventListener('delta', (ev) => {
+    const d = JSON.parse(ev.data);
+    $('pending').textContent = d.pending || '(empty)';
+  });
+  es.addEventListener('release', (ev) => {
+    const d = JSON.parse(ev.data);
+    const badge = d.reason === 'punctuation' ? 'ok' : d.reason === 'pressure' ? 'warn' : 'gray';
+    const div = document.createElement('div');
+    div.className = 'stream-line';
+    div.innerHTML = `<span class="badge ${badge}">${d.reason}</span>
+      <span style="flex:1"><div>${d.text}</div>
+      <code style="font-size:11.5px;color:var(--accent)">${escapeHtml(d.output)}</code></span>`;
+    $('releases').appendChild(div);
+  });
+  es.addEventListener('done', () => { $('pending').textContent = '(empty)'; es.close(); });
+  es.onerror = () => es.close();
+});
+
+$('tab-batch').addEventListener('click', () => switchTab('batch'));
+$('tab-stream').addEventListener('click', () => switchTab('stream'));
+function switchTab(which) {
+  $('tab-batch').ariaSelected = which === 'batch';
+  $('tab-stream').ariaSelected = which === 'stream';
+  $('view-batch').hidden = which !== 'batch';
+  $('view-stream').hidden = which !== 'stream';
+}
+
+function escapeHtml(s) { return s.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+// --- boot --------------------------------------------------------------------
+const cfg = await fetch('/api/config').then((r) => r.json());
+DEFAULTS = cfg.dictionary; DICT = structuredClone(cfg.dictionary); hasFishKey = cfg.hasFishKey;
+$('samples').innerHTML = '';
+for (const s of cfg.samples) {
+  const b = document.createElement('button');
+  b.textContent = s;
+  b.addEventListener('click', () => { $('text').value = s; run(); });
+  $('samples').appendChild(b);
+}
+if (!hasFishKey) {
+  $('speak').disabled = true;
+  $('tts-sub').textContent = 'FISH_API_KEY not set on the server';
+}
+renderDict();
+run();
+</script>
+</body>
+</html>
