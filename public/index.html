@@ -172,12 +172,21 @@
       </div>
 
       <div class="step">
-        <div class="step-head"><span class="step-num">4</span><span class="step-title">Synthesize</span>
-          <span class="step-sub" id="tts-sub"></span></div>
-        <pre class="out" id="reqbody"></pre>
-        <div class="row" style="margin-top:12px">
-          <button class="primary" id="speak">▶ Synthesize &amp; play</button>
-          <audio id="audio" controls style="flex:1;min-width:220px;height:34px"></audio>
+        <div class="step-head"><span class="step-num">4</span><span class="step-title">A/B — does the dictionary help?</span>
+          <span class="step-sub" id="tts-sub">same voice, same settings</span></div>
+        <div class="row" style="align-items:flex-start;gap:18px">
+          <div style="flex:1;min-width:230px">
+            <p class="muted" style="font-size:12.5px;margin:0 0 6px">Original — text straight to TTS</p>
+            <pre class="out" id="raw-text" style="font-size:13px;min-height:44px"></pre>
+            <button id="batch-play-raw" style="margin-top:8px">▶ Synthesize</button>
+            <audio id="batch-audio-raw" controls style="width:100%;height:34px;margin-top:8px"></audio>
+          </div>
+          <div style="flex:1;min-width:230px">
+            <p class="muted" style="font-size:12.5px;margin:0 0 6px">Corrected — dictionary applied</p>
+            <pre class="out" id="reqbody" style="font-size:13px;min-height:44px"></pre>
+            <button class="primary" id="batch-play-fixed" style="margin-top:8px">▶ Synthesize</button>
+            <audio id="batch-audio-fixed" controls style="width:100%;height:34px;margin-top:8px"></audio>
+          </div>
         </div>
         <div class="err" id="tts-err"></div>
       </div>
@@ -329,31 +338,39 @@ async function run() {
     /<\|phoneme_start\|>(.*?)<\|phoneme_end\|>/g,
     (_, p) => `<span class="tagpart">&lt;|phoneme_start|&gt;${p}&lt;|phoneme_end|&gt;</span>`);
 
-  $('reqbody').textContent = JSON.stringify({ text: res.output, format: 'mp3' }, null, 2);
+  $('raw-text').textContent = text;
+  $('reqbody').innerHTML = res.output.replace(
+    /<\|phoneme_start\|>(.*?)<\|phoneme_end\|>/g,
+    (_, p) => `<span class="tagpart">&lt;|phoneme_start|&gt;${p}&lt;|phoneme_end|&gt;</span>`);
 
   if (res.errors?.length) $('tts-err').textContent = 'dictionary: ' + res.errors.join('; ');
   else $('tts-err').textContent = '';
+  window.__raw = text;
   window.__out = res.output;
 }
 
 $('text').addEventListener('input', debounce(run, 250));
 
 // --- synthesize --------------------------------------------------------------
-$('speak').addEventListener('click', async () => {
-  const btn = $('speak'); btn.disabled = true; $('tts-err').textContent = '';
+// Low temperature so run-to-run variance doesn't muddy an A/B comparison.
+async function speak(text, audioEl, btn, errEl) {
+  btn.disabled = true; errEl.textContent = '';
   try {
     const r = await fetch('/api/tts', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: window.__out }),
+      body: JSON.stringify({ text, temperature: 0.3, top_p: 0.3 }),
     });
     if (!r.ok) throw new Error((await r.json()).error);
-    const audio = $('audio');
-    audio.src = URL.createObjectURL(await r.blob());
-    await audio.play();
-  } catch (e) {
-    $('tts-err').textContent = e.message;
-  } finally { btn.disabled = false; }
-});
+    audioEl.src = URL.createObjectURL(await r.blob());
+    await audioEl.play();
+  } catch (e) { errEl.textContent = e.message; }
+  finally { btn.disabled = false; }
+}
+
+$('batch-play-raw').addEventListener('click', (e) =>
+  speak(window.__raw, $('batch-audio-raw'), e.target, $('tts-err')));
+$('batch-play-fixed').addEventListener('click', (e) =>
+  speak(window.__out, $('batch-audio-fixed'), e.target, $('tts-err')));
 
 // --- streaming view ----------------------------------------------------------
 $('run-stream').addEventListener('click', () => {
@@ -409,21 +426,10 @@ async function runPls() {
 $('pls-xml').addEventListener('input', debounce(runPls, 350));
 $('pls-text').addEventListener('input', debounce(runPls, 300));
 
-async function speak(text, audioEl, btn) {
-  btn.disabled = true; $('pls-err').textContent = '';
-  try {
-    const r = await fetch('/api/tts', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, temperature: 0.3, top_p: 0.3 }),
-    });
-    if (!r.ok) throw new Error((await r.json()).error);
-    audioEl.src = URL.createObjectURL(await r.blob());
-    await audioEl.play();
-  } catch (e) { $('pls-err').textContent = e.message; }
-  finally { btn.disabled = false; }
-}
-$('pls-play-raw').addEventListener('click', (e) => speak(window.__plsRaw, $('pls-audio-raw'), e.target));
-$('pls-play-fixed').addEventListener('click', (e) => speak(window.__plsFixed, $('pls-audio-fixed'), e.target));
+$('pls-play-raw').addEventListener('click', (e) =>
+  speak(window.__plsRaw, $('pls-audio-raw'), e.target, $('pls-err')));
+$('pls-play-fixed').addEventListener('click', (e) =>
+  speak(window.__plsFixed, $('pls-audio-fixed'), e.target, $('pls-err')));
 
 $('tab-batch').addEventListener('click', () => switchTab('batch'));
 $('tab-stream').addEventListener('click', () => switchTab('stream'));
@@ -449,7 +455,8 @@ for (const s of cfg.samples) {
   $('samples').appendChild(b);
 }
 if (!hasFishKey) {
-  for (const id of ['speak', 'pls-play-raw', 'pls-play-fixed']) $(id).disabled = true;
+  for (const id of ['batch-play-raw', 'batch-play-fixed', 'pls-play-raw', 'pls-play-fixed'])
+    $(id).disabled = true;
   $('tts-sub').textContent = 'FISH_API_KEY not set on the server';
 }
 
