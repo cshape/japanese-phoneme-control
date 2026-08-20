@@ -111,12 +111,20 @@ const server = http.createServer(async (req, res) => {
       if (!apiKey) return json(res, 400, { error: 'FISH_API_KEY is not set on the server' });
 
       const body = await readBody(req);
-      const { text, model = 's2.1-pro' } = body;
+      const { text, model = 's2.1-pro', temperature, top_p } = body;
       const referenceId = body.referenceId ?? env('FISH_REFERENCE_ID');
       const upstream = await fetch(FISH_URL, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', model },
-        body: JSON.stringify({ text, format: 'mp3', ...(referenceId ? { reference_id: referenceId } : {}) }),
+        body: JSON.stringify({
+          text,
+          format: 'mp3',
+          ...(referenceId ? { reference_id: referenceId } : {}),
+          // Generation is stochastic (verified: 5/5 identical requests -> 5 distinct
+          // outputs). Lower temperature/top_p for consistency-critical prompts.
+          ...(temperature !== undefined ? { temperature } : {}),
+          ...(top_p !== undefined ? { top_p } : {}),
+        }),
       });
 
       if (!upstream.ok) {

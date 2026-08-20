@@ -67,7 +67,14 @@ export function toMorae(yomi) {
       continue;
     }
     if (!MONOGRAPHS[ch]) throw new Error(`unmapped kana "${ch}" in "${yomi}"`);
-    morae.push(MONOGRAPHS[ch]);
+
+    // オ段 + ウ is a long o, not "ou": こうそく is ko-o-so-ku, もうすぐ is mo-o-su-gu.
+    // Readings in a lexicon are written orthographically (こう), so mapping kana
+    // to romaji literally would emit `ko u` and mispronounce the vowel.
+    // Matches OpenJTalk, which converts おう but leaves えい as e-i.
+    const prev = morae.at(-1);
+    if (ch === 'ウ' && prev && prev.at(-1) === 'o') morae.push('o');
+    else morae.push(MONOGRAPHS[ch]);
     i += 1;
   }
   return morae;

@@ -37,9 +37,24 @@ export function getTokenizer() {
  * Returns the tokens (for display), the segments the text was split into, the
  * final string to send to TTS, and any dictionary errors.
  */
+// Compiling converts every entry's reading to morae. For a handful of entries
+// that is free; for a navigation gazetteer it is the dominant per-request cost,
+// and they flagged TTFB. Cache on the dictionary object so a long-lived
+// dictionary compiles once for the life of the process.
+const compileCache = new WeakMap();
+
+function compileCached(dictionary) {
+  let hit = compileCache.get(dictionary);
+  if (!hit) {
+    hit = compile(dictionary);
+    compileCache.set(dictionary, hit);
+  }
+  return hit;
+}
+
 export async function analyze(text, dictionary) {
   const tokenizer = await getTokenizer();
-  const { entries, errors } = compile(dictionary);
+  const { entries, errors } = compileCached(dictionary);
   const tokens = text ? tokenizer.tokenize(text) : [];
 
   const segments = [];
