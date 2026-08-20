@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { DICTIONARY, SAMPLES } from './dictionary.js';
 import { analyze } from './tokenize.js';
 import { CarryBuffer, maxKeyLength } from './stream.js';
+import { parseLexicon, apply as applyLexicon } from './pls-to-fish.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8787);
@@ -60,11 +61,23 @@ const server = http.createServer(async (req, res) => {
 
     // --- defaults for the UI ------------------------------------------------
     if (req.method === 'GET' && url.pathname === '/api/config') {
+      let plsExample = '';
+      try { plsExample = await readFile(path.join(HERE, 'example_lexicon.pls'), 'utf8'); } catch {}
       return json(res, 200, {
         dictionary: DICTIONARY,
         samples: SAMPLES,
+        plsExample,
+        plsSamples: ['内気循環に切り替えておきますね。', '橋の上で待っています。', '箸を持ってきました。'],
         hasFishKey: Boolean(env('FISH_API_KEY')),
       });
+    }
+
+    // --- PLS lexicon: parse + substitute ------------------------------------
+    if (req.method === 'POST' && url.pathname === '/api/pls') {
+      const { lexicon = '', text = '' } = await readBody(req);
+      const entries = parseLexicon(lexicon);
+      const { text: output, hits } = applyLexicon(text, entries);
+      return json(res, 200, { entries, hits, output });
     }
 
     // --- parse + replace ----------------------------------------------------

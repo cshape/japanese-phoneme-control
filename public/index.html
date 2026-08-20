@@ -150,6 +150,7 @@
     <div class="tabs">
       <button id="tab-batch" aria-selected="true">Batch</button>
       <button id="tab-stream" aria-selected="false">Streaming from an LLM</button>
+      <button id="tab-pls" aria-selected="false">PLS lexicon</button>
     </div>
 
     <div id="view-batch">
@@ -179,6 +180,48 @@
           <audio id="audio" controls style="flex:1;min-width:220px;height:34px"></audio>
         </div>
         <div class="err" id="tts-err"></div>
+      </div>
+    </div>
+
+    <div id="view-pls" hidden>
+      <div class="step">
+        <div class="step-head"><span class="step-num">1</span><span class="step-title">Paste a PLS lexicon</span>
+          <span class="step-sub">&lt;alias&gt; substitutes kana · x-fish-openjtalk substitutes a tag</span></div>
+        <textarea id="pls-xml" style="min-height:150px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
+        <p class="muted" style="font-size:12.5px;margin:8px 0 0">
+          Nothing is uploaded anywhere — it is parsed by the local server and not stored.
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">2</span><span class="step-title">Sentence</span></div>
+        <textarea id="pls-text" style="min-height:56px"></textarea>
+        <div class="samples" id="pls-samples" style="margin-top:8px"></div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">3</span><span class="step-title">Entries &amp; substitutions</span>
+          <span class="step-sub" id="pls-sub"></span></div>
+        <div id="pls-entries"></div>
+        <pre class="out" id="pls-output" style="margin-top:10px"></pre>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-num">4</span><span class="step-title">A/B — does the correction help?</span>
+          <span class="step-sub">same voice, same settings</span></div>
+        <div class="row" style="align-items:flex-start;gap:18px">
+          <div style="flex:1;min-width:230px">
+            <p class="muted" style="font-size:12.5px;margin:0 0 6px">Original — no dictionary</p>
+            <button id="pls-play-raw">▶ Synthesize</button>
+            <audio id="pls-audio-raw" controls style="width:100%;height:34px;margin-top:8px"></audio>
+          </div>
+          <div style="flex:1;min-width:230px">
+            <p class="muted" style="font-size:12.5px;margin:0 0 6px">Corrected — dictionary applied</p>
+            <button class="primary" id="pls-play-fixed">▶ Synthesize</button>
+            <audio id="pls-audio-fixed" controls style="width:100%;height:34px;margin-top:8px"></audio>
+          </div>
+        </div>
+        <div class="err" id="pls-err"></div>
       </div>
     </div>
 
@@ -336,13 +379,60 @@ $('run-stream').addEventListener('click', () => {
   es.onerror = () => es.close();
 });
 
+// --- PLS lexicon view --------------------------------------------------------
+async function runPls() {
+  const res = await fetch('/api/pls', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ lexicon: $('pls-xml').value, text: $('pls-text').value }),
+  }).then((r) => r.json());
+
+  const modes = { alias: 'substitute kana', phoneme: 'substitute tag', unsupported: 'not x-fish-openjtalk' };
+  $('pls-sub').textContent = `${res.entries.length} entries · ${res.hits.length} matched`;
+  $('pls-entries').innerHTML = res.entries.length ? res.entries.map((e) => {
+    const hit = res.hits.find((h) => h.grapheme === e.grapheme);
+    const badge = e.kind === 'phoneme' ? 'ok' : e.kind === 'alias' ? 'gray' : 'warn';
+    const val = e.kind === 'alias' ? e.alias : e.kind === 'phoneme' ? e.phonemes : e.raw;
+    return `<div class="stream-line">
+      <span class="badge ${badge}">${modes[e.kind]}</span>
+      <span style="flex:1"><b>${e.grapheme}</b> <code>${escapeHtml(val)}</code>
+      ${hit ? '<span class="muted"> · matched</span>' : ''}</span></div>`;
+  }).join('') : '<p class="muted">No lexemes parsed.</p>';
+
+  $('pls-output').innerHTML = (res.output || '(nothing)').replace(
+    /<\|phoneme_start\|>(.*?)<\|phoneme_end\|>/g,
+    (_, p) => `<span class="tagpart">&lt;|phoneme_start|&gt;${p}&lt;|phoneme_end|&gt;</span>`);
+
+  window.__plsRaw = $('pls-text').value;
+  window.__plsFixed = res.output;
+}
+
+$('pls-xml').addEventListener('input', debounce(runPls, 350));
+$('pls-text').addEventListener('input', debounce(runPls, 300));
+
+async function speak(text, audioEl, btn) {
+  btn.disabled = true; $('pls-err').textContent = '';
+  try {
+    const r = await fetch('/api/tts', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, temperature: 0.3, top_p: 0.3 }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    audioEl.src = URL.createObjectURL(await r.blob());
+    await audioEl.play();
+  } catch (e) { $('pls-err').textContent = e.message; }
+  finally { btn.disabled = false; }
+}
+$('pls-play-raw').addEventListener('click', (e) => speak(window.__plsRaw, $('pls-audio-raw'), e.target));
+$('pls-play-fixed').addEventListener('click', (e) => speak(window.__plsFixed, $('pls-audio-fixed'), e.target));
+
 $('tab-batch').addEventListener('click', () => switchTab('batch'));
 $('tab-stream').addEventListener('click', () => switchTab('stream'));
+$('tab-pls').addEventListener('click', () => switchTab('pls'));
 function switchTab(which) {
-  $('tab-batch').ariaSelected = which === 'batch';
-  $('tab-stream').ariaSelected = which === 'stream';
-  $('view-batch').hidden = which !== 'batch';
-  $('view-stream').hidden = which !== 'stream';
+  for (const t of ['batch', 'stream', 'pls']) {
+    $(`tab-${t}`).ariaSelected = which === t;
+    $(`view-${t}`).hidden = which !== t;
+  }
 }
 
 function escapeHtml(s) { return s.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
@@ -359,11 +449,22 @@ for (const s of cfg.samples) {
   $('samples').appendChild(b);
 }
 if (!hasFishKey) {
-  $('speak').disabled = true;
+  for (const id of ['speak', 'pls-play-raw', 'pls-play-fixed']) $(id).disabled = true;
   $('tts-sub').textContent = 'FISH_API_KEY not set on the server';
 }
+
+$('pls-xml').value = cfg.plsExample ?? '';
+$('pls-text').value = cfg.plsSamples?.[0] ?? '';
+for (const s of cfg.plsSamples ?? []) {
+  const b = document.createElement('button');
+  b.textContent = s;
+  b.addEventListener('click', () => { $('pls-text').value = s; runPls(); });
+  $('pls-samples').appendChild(b);
+}
+
 renderDict();
 run();
+runPls();
 </script>
 </body>
 </html>
